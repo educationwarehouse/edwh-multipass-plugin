@@ -9,6 +9,9 @@
 
 - [Installation](#installation)
 - [License](#license)
+- [mp.fix-host](#mpfix-host)
+- [mp.install](#mpinstall)
+- [mp.prepare](#mpprepare)
 
 ## Installation
 
@@ -31,7 +34,11 @@ pipx install edwh
 pipx inject edwh edwh-multipass-plugin
 ```
 
-## mp.fix-host (mp.fix-dns)
+---
+
+## mp.fix-host
+>  aka `mp.fix-dns`
+
 Fixes the ip adres in the hosts file for a multipass instance.
 
 When issuing on the first run fix-host will add an entry to your hosts file, and you can enter 
@@ -45,10 +52,12 @@ After this initial registration, you can update the ip address of the instance b
 Be aware that you cannot register new hostnames after the initial registration. Update your 
 `/etc/hosts` file instead. 
 
+---
 ## mp.install 
 Installs multipass on an ubuntu based machine if not already installed. 
 
 
+---
 ## mp.prepare 
 Allows you to ssh into a multipass instance, so you are able to run fabric commands against it. 
 
@@ -58,6 +67,8 @@ and add the public key to the multipass instance's `authorized_keys` file.
 
 `mp.prepares` automatically runs `mp.install`. 
 
+---
 ## License
 
 `edwh-multipass-plugin` is distributed under the terms of the [MIT](https://spdx.org/licenses/MIT.html) license.
+See [the license](LICENSE.txt) for details. 
