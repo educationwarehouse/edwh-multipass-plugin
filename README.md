@@ -12,9 +12,51 @@
 
 ## Installation
 
+Install just this plugin:
+
 ```console
 pip install edwh-multipass-plugin
 ```
+
+But probably you want to install the whole `edwh` package:
+
+```console
+pipx install edwh[plugins,omgeving]
+```
+
+if you want to use the `edwh` command line tool with just the `multipass` plugin:
+
+```console
+pipx install edwh
+pipx inject edwh edwh-multipass-plugin
+```
+
+## mp.fix-host (mp.fix-dns)
+Fixes the ip adres in the hosts file for a multipass instance.
+
+When issuing on the first run fix-host will add an entry to your hosts file, and you can enter 
+different hostnames you want to register for the instance.
+
+```
+mp.fix-host dockers -h dockers.local -h delen.dockers.local -h web2py.dockers.local ... 
+```
+
+After this initial registration, you can update the ip address of the instance by running `mp.fix-host dockers` again.
+Be aware that you cannot register new hostnames after the initial registration. Update your 
+`/etc/hosts` file instead. 
+
+## mp.install 
+Installs multipass on an ubuntu based machine if not already installed. 
+
+
+## mp.prepare 
+Allows you to ssh into a multipass instance, so you are able to run fabric commands against it. 
+
+
+`mp.prepare` will generate a multipass_keyfile `~/.ssh/multipass.key` (if not already present) 
+and add the public key to the multipass instance's `authorized_keys` file. 
+
+`mp.prepares` automatically runs `mp.install`. 
 
 ## License
 
