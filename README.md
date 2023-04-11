@@ -25,6 +25,8 @@ But probably you want to install the whole `edwh` package:
 
 ```console
 pipx install edwh[plugins,omgeving]
+# or
+pipx install edwh[multipass]
 ```
 
 if you want to use the `edwh` command line tool with just the `multipass` plugin:
