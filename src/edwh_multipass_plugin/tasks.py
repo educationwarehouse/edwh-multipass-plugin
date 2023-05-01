@@ -1,9 +1,10 @@
-import json, pathlib
+import json
+import pathlib
 import re
 import sys
 
 import invoke
-from invoke import task, Collection, Task
+from invoke import task
 
 
 @task(name="install")
@@ -35,8 +36,8 @@ def fix_hosts_for_multipass_machine(c, machine_name, hostname=[]):
         print("Missing pip, installing...")
         invoke_path = c.run("which invoke", hide=True).stdout.strip()
         pip_path = invoke_path.replace("/invoke", "/pip")
-        print("running:", pip_path + " install pyyaml")
-        c.run(pip_path + " install pyyaml")
+        print(f"running: {pip_path} install pyyaml")
+        c.run(f"{pip_path} install pyyaml")
         import yaml
     if not machine_name:
         print("Machine name required. Use -m or --machine-name", file=sys.stderr)
@@ -94,9 +95,10 @@ def fix_hosts_for_multipass_machine(c, machine_name, hostname=[]):
                 else:
                     new_hosts.append(line)
             c: invoke.Context
-            # simpelweg overschrijven via een echo of cat >> /etc/hosts mag niet. dus dan maar via een python script.
-            overwrite_hosts_command = """python3 -c "import sys \nwith open('/etc/hosts','w') as h: h.write(sys.stdin.read().strip())" <<EOFEOFEOF\n"""
-            overwrite_hosts_command += "\n".join(new_hosts)
+            overwrite_hosts_command = (
+                """python3 -c "import sys \nwith open('/etc/hosts','w') as h: h.write(sys.stdin.read().strip())" <<EOFEOFEOF\n"""
+                + "\n".join(new_hosts)
+            )
             overwrite_hosts_command += "\nEOFEOFEOF"
             c.sudo("ls >> /dev/null")  # force a sudo to ask for password
             c.sudo(overwrite_hosts_command)
@@ -121,7 +123,7 @@ def prepare_multipass(c, machine_name):
     ]
     # convert to lookup by name
     machines = {m["name"]: m for m in machines}
-    if not machine_name in machines:
+    if machine_name not in machines:
         raise KeyError(
             f'Machine name "{machine_name}" not found in multipass. Available names: {", ".join(list(machines.keys()))}'
         )
@@ -135,7 +137,7 @@ def prepare_multipass(c, machine_name):
         print(" [x] created missing key file")
     else:
         print(" [x] key file exists")
-    pub_file = pathlib.Path(str(multipass_keyfile) + ".pub")
+    pub_file = pathlib.Path(f"{str(multipass_keyfile)}.pub")
     pub_key = pub_file.read_text().strip()
     if (
         pub_key
@@ -153,8 +155,9 @@ def prepare_multipass(c, machine_name):
             hide=True,
         )
         print(f" [x] installed multipass keyfile on {machine_name}")
-    print("Execute fabric with:")
-    fab_commands = "|".join(c.run("fab --complete",hide=True).stdout.strip().split("\n"))
-    print(f"  fab -eH ubuntu@{ip} [{fab_commands}]")
-    print(f'  fab -eH ubuntu@{ip} -- echo "or some other arbitrary bash command"')
+    edwh_cmd = pathlib.Path(sys.argv[0]).name
+    print(f"Execute {edwh_cmd} with:")
+    fab_commands = "|".join(c.run(f"{edwh_cmd} --complete",hide=True).stdout.strip().split("\n"))
+    print(f"  {edwh_cmd} -eH ubuntu@{ip} [{fab_commands}]")
+    print(f'  {edwh_cmd} -eH ubuntu@{ip} -- echo "or some other arbitrary bash command"')
 
