@@ -22,7 +22,8 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-  'invoke'
+  "edwh",
+  "pyyaml",
 ]
 
 [project.entry-points."edwh.tasks"]

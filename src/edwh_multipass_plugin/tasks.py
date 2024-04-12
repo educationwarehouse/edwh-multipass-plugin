@@ -3,11 +3,13 @@ import pathlib
 import re
 import sys
 
+import edwh
 import invoke
+import yaml
 from invoke import task
 
 
-@task(name="install")
+@task(name="install", pre=[edwh.tasks.require_sudo])
 def install_multipass(c):
     if not c.run("multipass --version", warn=True, hide=True).ok:
         print(" [ ] Multipass not found. installing...")
@@ -21,24 +23,8 @@ def generate_key(c, comment: str, filename: str):
     c.run(f'ssh-keygen -t ed25519 -C "{comment}" -f {filename} -N ""')
 
 
-@task(name="fix-host", aliases=["fix-dns"], iterable=["hostname"])
-def fix_hosts_for_multipass_machine(c, machine_name, hostname=[]):
-    try:
-        import yaml
-    except ModuleNotFoundError:
-        # Installeer pyyaml, maar doe dat wel met de juiste pip
-        # omdat we nooit weten welke pip dat is, gaan we er maar vanuit
-        # dat pip als executable "in de buurt" staat van "invoke",
-        # wat het script is dat dit uitvoert. Dus met `which invoke` vinden
-        # we het volledige pad naar invoke, en van daaruit hebben we vermoedelijk
-        # de juiste pip te pakken. Of het nou een virtualenv van de gebruiker is, van pipx
-        # of geinstalleerd met --user of zelfs `pip install invoke` als root...
-        print("Missing pip, installing...")
-        invoke_path = c.run("which invoke", hide=True).stdout.strip()
-        pip_path = invoke_path.replace("/invoke", "/pip")
-        print(f"running: {pip_path} install pyyaml")
-        c.run(f"{pip_path} install pyyaml")
-        import yaml
+@task(name="fix-host", aliases=["fix-dns"], iterable=["hostname"], pre=[edwh.tasks.require_sudo])
+def fix_hosts_for_multipass_machine(c, machine_name, hostname=()):
     if not machine_name:
         print("Machine name required. Use -m or --machine-name", file=sys.stderr)
     output = c.run("multipass list --format yaml", hide=True).stdout.strip()
@@ -67,17 +53,11 @@ def fix_hosts_for_multipass_machine(c, machine_name, hostname=[]):
     hostnames = list(set(hostnames))
     with open("/etc/hosts", "r") as hosts_handle:
         host_lines = hosts_handle.read().split("\n")
-        found = any(
-            name
-            for name in hostnames
-            if name in " ".join([line.split("#")[0] for line in host_lines])
-        )
+        found = any(name for name in hostnames if name in " ".join([line.split("#")[0] for line in host_lines]))
         if found:
             print("Updating hosts file")
             if len(hostname) > 1:
-                print(
-                    "You have entered hostnames, that argument is incompatible with the upgrade. "
-                )
+                print("You have entered hostnames, that argument is incompatible with the upgrade. ")
                 print("Edit /etc/hosts manually to register aliases manually")
             new_hosts = []
             for line in host_lines:
@@ -86,11 +66,7 @@ def fix_hosts_for_multipass_machine(c, machine_name, hostname=[]):
                     line = line.replace("\t", "    ")
                     # create a new line with the ipv, whitespace, and the remainder of the original
                     # line (everything after the first space), replacing multiple spaces with one.
-                    new_hosts.append(
-                        re.sub(
-                            r"  +", " ", f'{first_address}      {line.split(" ",1)[1]}'
-                        )
-                    )
+                    new_hosts.append(re.sub(r"  +", " ", f'{first_address}      {line.split(" ", 1)[1]}'))
                     print(new_hosts[-1])
                 else:
                     new_hosts.append(line)
@@ -105,22 +81,25 @@ def fix_hosts_for_multipass_machine(c, machine_name, hostname=[]):
         else:
             print("Appending to hosts file")
             c.sudo("ls >> /dev/null")  # force a sudo to ask for password
-            line_to_append = re.sub(
-                r"  +", " ", f"{first_address}  {' '.join(hostnames)}"
-            )
+            line_to_append = re.sub(r"  +", " ", f"{first_address}  {' '.join(hostnames)}")
             print(line_to_append)
             # simpelweg overschrijven via een echo of cat >> /etc/hosts mag niet. dus dan maar via een python script.
-            c.sudo(
-                f'''python3 -c "with open('/etc/hosts','a') as h: h.write('{line_to_append}')"'''
-            )
+            c.sudo(f'''python3 -c "with open('/etc/hosts','a') as h: h.write('{line_to_append}')"''')
+
+
+@task(name="list")
+def list_machines(c, quiet=False):
+    output = c.run("multipass list --format json", hide=True).stdout
+    if quiet:
+        return json.loads(output)["list"]
+    else:
+        print(output)
 
 
 @task(pre=[install_multipass], name="prepare")
 def prepare_multipass(c, machine_name):
     print(" ... Searching for vms")
-    machines = json.loads(c.run("multipass list --format json", hide=True).stdout)[
-        "list"
-    ]
+    machines = list_machines(c, quiet=True)
     # convert to lookup by name
     machines = {m["name"]: m for m in machines}
     if machine_name not in machines:
@@ -157,7 +136,6 @@ def prepare_multipass(c, machine_name):
         print(f" [x] installed multipass keyfile on {machine_name}")
     edwh_cmd = pathlib.Path(sys.argv[0]).name
     print(f"Execute {edwh_cmd} with:")
-    fab_commands = "|".join(c.run(f"{edwh_cmd} --complete",hide=True).stdout.strip().split("\n"))
+    fab_commands = "|".join(c.run(f"{edwh_cmd} --complete", hide=True).stdout.strip().split("\n"))
     print(f"  {edwh_cmd} -eH ubuntu@{ip} [{fab_commands}]")
     print(f'  {edwh_cmd} -eH ubuntu@{ip} -- echo "or some other arbitrary bash command"')
-
