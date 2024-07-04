@@ -33,7 +33,7 @@ if you want to use the `edwh` command line tool with just the `multipass` plugin
 
 ```console
 pipx install edwh
-pipx inject edwh edwh-multipass-plugin
+edwh plugin.add multipass
 ```
 
 ---
