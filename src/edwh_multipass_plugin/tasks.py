@@ -173,7 +173,8 @@ def prepare_multipass(c, machine_name: str):
         print(f" [x] installed multipass keyfile on {machine_name}")
 
     edwh_cmd = pathlib.Path(sys.argv[0]).name
-    print(f"Execute {edwh_cmd} with:")
-    fab_commands = "|".join(c.run(f"{edwh_cmd} --complete", hide=True).stdout.strip().split("\n"))
-    print(f"  {edwh_cmd} -eH ubuntu@{ip} [{fab_commands}]")
+    print(f"Execute {edwh_cmd} with for example:")
+    # fab_commands = "|".join(c.run(f"{edwh_cmd} --complete", hide=True).stdout.strip().split("\n"))
+    # print(f"  {edwh_cmd} -eH ubuntu@{ip} [{fab_commands}]")
+    print(f"  {edwh_cmd} -eH ubuntu@{ip} remote.prepare-generic-server")
     print(f'  {edwh_cmd} -eH ubuntu@{ip} -- echo "or some other arbitrary bash command"')
