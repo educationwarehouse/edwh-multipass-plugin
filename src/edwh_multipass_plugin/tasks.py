@@ -132,7 +132,7 @@ def list_machines(c: Context, quiet=False):
 
 
 @task(pre=[install_multipass], name="prepare")
-def prepare_multipass(c, machine_name: str):
+def prepare_multipass(c: Context, machine_name: str):
     """
     Setup ssh access to a multipass machine.
     """
