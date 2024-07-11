@@ -7,17 +7,20 @@ import typing
 import edwh
 import yaml
 from edwh import confirm
-from invoke import Context, task
+from fabric import Connection, task
 
 T = typing.TypeVar("T")
 
+# abs path required for remote connections
+MULTIPASS = "/snap/bin/multipass"
+
 
 @task(name="install", pre=[edwh.tasks.require_sudo])
-def install_multipass(c: Context):
+def install_multipass(c: Connection):
     """
     Install multipass on this host.
     """
-    if not c.run("multipass --version", warn=True, hide=True).ok:
+    if not c.run(f"{MULTIPASS} --version", warn=True, hide=True).ok:
         print(" [ ] Multipass not found. installing...")
         c.sudo("snap install multipass")
         print(" [x] Multipass installed")
@@ -25,7 +28,7 @@ def install_multipass(c: Context):
         print(" [x] Multipass already installed")
 
 
-def generate_key(c, comment: str, filename: str):
+def generate_key(c: Connection, comment: str, filename: str):
     """
     Create an SSH pub-priv keypair.
     """
@@ -42,7 +45,7 @@ def uniq(lst: list[T]) -> list[T]:
 
 
 @task(name="fix-host", aliases=["fix-dns"], iterable=["hostname"], pre=[edwh.tasks.require_sudo])
-def fix_hosts_for_multipass_machine(c: Context, machine_name: str, hostname: typing.Collection[str] = ()):
+def fix_hosts_for_multipass_machine(c: Connection, machine_name: str, hostname: typing.Collection[str] = ()):
     """
     Update your hosts file to connect fake hostnames to your multipass IP.
 
@@ -54,7 +57,7 @@ def fix_hosts_for_multipass_machine(c: Context, machine_name: str, hostname: typ
         print("Machine name required. Use -m or --machine-name", file=sys.stderr)
         exit(1)
 
-    output = c.run("multipass list --format yaml", hide=True).stdout.strip()
+    output = c.run(f"{MULTIPASS} list --format yaml", hide=True).stdout.strip()
     machines = yaml.load(output, yaml.SafeLoader)
     if machine_name not in machines:
         print(
@@ -120,11 +123,12 @@ def fix_hosts_for_multipass_machine(c: Context, machine_name: str, hostname: typ
 
 
 @task(name="list")
-def list_machines(c: Context, quiet=False):
+def list_machines(c: Connection, quiet=False):
     """
     List multipass machines.
     """
-    output = c.run("multipass list --format json", hide=True).stdout
+
+    output = c.run(f"{MULTIPASS} list --format json", hide=True).stdout
     if quiet:
         return json.loads(output)["list"]
     else:
@@ -132,7 +136,7 @@ def list_machines(c: Context, quiet=False):
 
 
 @task(pre=[install_multipass], name="prepare")
-def prepare_multipass(c: Context, machine_name: str):
+def prepare_multipass(c: Connection, machine_name: str):
     """
     Setup ssh access to a multipass machine.
     """
