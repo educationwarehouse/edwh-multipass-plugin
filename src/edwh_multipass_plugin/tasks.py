@@ -14,6 +14,9 @@ T = typing.TypeVar("T")
 # abs path required for remote connections
 MULTIPASS = "/snap/bin/multipass"
 
+# DON'T resolve ~ yet, since it can be executed remotely!
+EW_MP_CONFIG = "~/.config/edwh/multipass.toml"
+
 
 @task(name="install", pre=[edwh.tasks.require_sudo])
 def install_multipass(c: Connection):
@@ -187,11 +190,12 @@ def prepare_multipass(c: Connection, machine_name: str):
 # todo: mp.mount which stores mounts in a file
 #    so mp.remount knows which folders to remount
 
+
 @task()
 def mount(c: Connection, folder: str, machine: str = "dockers", target_name: str = ""):
     target_name = target_name or folder
     # c.run(f"{MULTIPASS} mount {folder} {machine}:{target_name}")
     print(f"{MULTIPASS} mount {folder} {machine}:{target_name}")
 
-    fabric_read(c, "~/.config/edwh/multipass.toml", throw=False)
-    fabric_write(c, "~/.config/edwh/multipass.toml", "[todo]", parents=True)
+    fabric_read(c, EW_MP_CONFIG, throw=False)
+    fabric_write(c, EW_MP_CONFIG, "[todo]", parents=True)
