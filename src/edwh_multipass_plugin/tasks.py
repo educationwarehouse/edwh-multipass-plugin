@@ -6,7 +6,7 @@ import typing
 
 import edwh
 import yaml
-from edwh import confirm
+from edwh import confirm, fabric_read, fabric_write
 from fabric import Connection, task
 
 T = typing.TypeVar("T")
@@ -182,3 +182,16 @@ def prepare_multipass(c: Connection, machine_name: str):
     # print(f"  {edwh_cmd} -eH ubuntu@{ip} [{fab_commands}]")
     print(f"  {edwh_cmd} -eH ubuntu@{ip} remote.prepare-generic-server")
     print(f'  {edwh_cmd} -eH ubuntu@{ip} -- echo "or some other arbitrary bash command"')
+
+
+# todo: mp.mount which stores mounts in a file
+#    so mp.remount knows which folders to remount
+
+@task()
+def mount(c: Connection, folder: str, machine: str = "dockers", target_name: str = ""):
+    target_name = target_name or folder
+    # c.run(f"{MULTIPASS} mount {folder} {machine}:{target_name}")
+    print(f"{MULTIPASS} mount {folder} {machine}:{target_name}")
+
+    fabric_read(c, "~/.config/edwh/multipass.toml", throw=False)
+    fabric_write(c, "~/.config/edwh/multipass.toml", "[todo]", parents=True)
