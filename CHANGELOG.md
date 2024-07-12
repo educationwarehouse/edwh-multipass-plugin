@@ -2,6 +2,16 @@
 
 <!--next-version-placeholder-->
 
+## v1.1.1 (2024-07-12)
+
+### Fix
+
+* Slightly improved readable formatting for `ew mp.mounts` ([`5fc1a35`](https://github.com/educationwarehouse/edwh-multipass-plugin/commit/5fc1a35cb50d4ed6448790d1421dcfc8d1a15614))
+
+### Documentation
+
+* Manually fix changelog ([`f64ec4c`](https://github.com/educationwarehouse/edwh-multipass-plugin/commit/f64ec4c801b6df5e1708fe5e177cb7bdfe8b9c41))
+
 ## v1.1.0 (2024-07-12)
 
 ### Feature
