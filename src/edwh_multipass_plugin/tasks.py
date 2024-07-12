@@ -289,4 +289,10 @@ def list_mounts(c: Connection, machine: str = DEFAULT_MACHINE_NAME) -> None:
     config = _load_mp_config(c)
     mounts = get_mounts(config, machine)
 
-    print(mounts)
+    home = str(Path.home())
+    cprint(f"Mounts for '{machine}':")
+    for source, target in mounts.items():
+        if source.startswith(home):
+            source = source.replace(home, "~", 1)
+
+        print(f"  {source}: {target}")
