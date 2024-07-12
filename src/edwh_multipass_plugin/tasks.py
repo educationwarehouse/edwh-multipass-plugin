@@ -1,23 +1,34 @@
 import json
-import pathlib
 import re
 import sys
 import typing
+from pathlib import Path
 
 import edwh
 import yaml
-from edwh import confirm
-from invoke import Context, task
+from edwh import confirm, fabric_read, fabric_write
+from edwh import AnyDict
+from fabric import Connection
+from edwh.improved_invoke import improved_task as task
+import tomlkit
+from termcolor import cprint
 
 T = typing.TypeVar("T")
 
+# abs path required for remote connections
+MULTIPASS = "/snap/bin/multipass"
+
+# DON'T resolve ~ yet, since it can be executed remotely!
+EW_MP_CONFIG = "~/.config/edwh/multipass.toml"
+DEFAULT_MACHINE_NAME = "dockers"
+
 
 @task(name="install", pre=[edwh.tasks.require_sudo])
-def install_multipass(c: Context):
+def install_multipass(c: Connection) -> None:
     """
     Install multipass on this host.
     """
-    if not c.run("multipass --version", warn=True, hide=True).ok:
+    if not c.run(f"{MULTIPASS} --version", warn=True, hide=True).ok:
         print(" [ ] Multipass not found. installing...")
         c.sudo("snap install multipass")
         print(" [x] Multipass installed")
@@ -25,7 +36,7 @@ def install_multipass(c: Context):
         print(" [x] Multipass already installed")
 
 
-def generate_key(c, comment: str, filename: str):
+def generate_key(c: Connection, comment: str, filename: str) -> None:
     """
     Create an SSH pub-priv keypair.
     """
@@ -42,7 +53,7 @@ def uniq(lst: list[T]) -> list[T]:
 
 
 @task(name="fix-host", aliases=["fix-dns"], iterable=["hostname"], pre=[edwh.tasks.require_sudo])
-def fix_hosts_for_multipass_machine(c: Context, machine_name: str, hostname: typing.Collection[str] = ()):
+def fix_hosts_for_multipass_machine(c: Connection, machine_name: str, hostname: typing.Collection[str] = ()) -> None:
     """
     Update your hosts file to connect fake hostnames to your multipass IP.
 
@@ -54,7 +65,7 @@ def fix_hosts_for_multipass_machine(c: Context, machine_name: str, hostname: typ
         print("Machine name required. Use -m or --machine-name", file=sys.stderr)
         exit(1)
 
-    output = c.run("multipass list --format yaml", hide=True).stdout.strip()
+    output = c.run(f"{MULTIPASS} list --format yaml", hide=True).stdout.strip()
     machines = yaml.load(output, yaml.SafeLoader)
     if machine_name not in machines:
         print(
@@ -92,7 +103,7 @@ def fix_hosts_for_multipass_machine(c: Context, machine_name: str, hostname: typ
             print("Edit /etc/hosts manually to register aliases manually")
         new_hosts = []
         for line in host_lines:
-            if any(True for name in hostnames if name in line):
+            if any(name in line for name in hostnames):
                 # line found, replace ip adress: convert tabs to spaces
                 line = line.replace("\t", "    ")
                 # create a new line with the ipv, whitespace, and the remainder of the original
@@ -120,26 +131,30 @@ def fix_hosts_for_multipass_machine(c: Context, machine_name: str, hostname: typ
 
 
 @task(name="list")
-def list_machines(c: Context, quiet=False):
+def list_machines(c: Connection, quiet: bool = False) -> list[AnyDict]:
     """
     List multipass machines.
     """
-    output = c.run("multipass list --format json", hide=True).stdout
+
+    output = c.run(f"{MULTIPASS} list --format json", hide=True).stdout
     if quiet:
-        return json.loads(output)["list"]
+        return typing.cast(
+            list[AnyDict],
+            json.loads(output)["list"]
+        )
     else:
         print(output)
+        return []
 
 
 @task(pre=[install_multipass], name="prepare")
-def prepare_multipass(c: Context, machine_name: str):
+def prepare_multipass(c: Connection, machine_name: str) -> None:
     """
     Setup ssh access to a multipass machine.
     """
     print(" ... Searching for vms")
-    machines = list_machines(c, quiet=True)
     # convert to lookup by name
-    machines = {m["name"]: m for m in machines}
+    machines = {m["name"]: m for m in list_machines(c, quiet=True)}
     if machine_name not in machines:
         raise KeyError(
             f'Machine name "{machine_name}" not found in multipass. Available names: {", ".join(list(machines.keys()))}'
@@ -147,14 +162,14 @@ def prepare_multipass(c: Context, machine_name: str):
     machine = machines[machine_name]
     ip = machine["ipv4"][0]
     print(f" [x] {machine_name} found @ {ip} ")
-    multipass_keyfile = pathlib.Path("~/.ssh/multipass.key").expanduser()
+    multipass_keyfile = Path("~/.ssh/multipass.key").expanduser()
     if not multipass_keyfile.exists():
         # create keyfile
         generate_key(c, "pyinvoke access to multipass machines", str(multipass_keyfile))
         print(" [x] created missing key file")
     else:
         print(" [x] key file exists")
-    pub_file = pathlib.Path(f"{multipass_keyfile}.pub")
+    pub_file = Path(f"{multipass_keyfile}.pub")
     pub_key = pub_file.read_text().strip()
     installed_keys = c.run(
         f'echo "cat .ssh/authorized_keys ; exit " | multipass shell {machine_name}',
@@ -172,9 +187,106 @@ def prepare_multipass(c: Context, machine_name: str):
         )
         print(f" [x] installed multipass keyfile on {machine_name}")
 
-    edwh_cmd = pathlib.Path(sys.argv[0]).name
+    edwh_cmd = Path(sys.argv[0]).name
     print(f"Execute {edwh_cmd} with for example:")
     # fab_commands = "|".join(c.run(f"{edwh_cmd} --complete", hide=True).stdout.strip().split("\n"))
     # print(f"  {edwh_cmd} -eH ubuntu@{ip} [{fab_commands}]")
     print(f"  {edwh_cmd} -eH ubuntu@{ip} remote.prepare-generic-server")
     print(f'  {edwh_cmd} -eH ubuntu@{ip} -- echo "or some other arbitrary bash command"')
+
+
+# todo: mp.mount which stores mounts in a file
+#    so mp.remount knows which folders to remount
+
+def _resolve_multipass_paths(folder: str, target: str) -> tuple[str, str]:
+    source_path = Path(folder) if folder.startswith("/") else Path.cwd() / folder
+    source_name = str(source_path).rstrip("/")
+    target_name = (target or folder).rstrip("/")
+
+    return source_name, target_name
+
+
+class MultipassMounts(typing.TypedDict, total=False):
+    mounts: typing.MutableMapping[str, str]
+
+
+MultipassConfig: typing.TypeAlias = dict[str, MultipassMounts]
+
+
+def _load_mp_config(c: Connection) -> MultipassConfig:
+    config_str = fabric_read(c, EW_MP_CONFIG, throw=False)
+    config = tomlkit.loads(config_str) if config_str else {}
+    return typing.cast(
+        MultipassConfig,
+        config,
+    )
+
+
+def get_mounts(config: MultipassConfig, machine: str) -> typing.MutableMapping[str, str]:
+    """
+    Extract mounts for a machine in config.
+    """
+    machine_config = config.setdefault(machine, {})
+    return machine_config.setdefault("mounts", {})
+
+
+def _store_mp_config(c: Connection, config: MultipassConfig) -> None:
+    config_str = tomlkit.dumps(config)
+    fabric_write(c, EW_MP_CONFIG, config_str, parents=True)
+
+
+@task(name="mount")
+def do_mount(c: Connection, folder: str, machine: str = DEFAULT_MACHINE_NAME, target_name: str = "") -> None:
+    """
+    Configure a new mountpoint.
+    """
+    source_name, target_name = _resolve_multipass_paths(folder, target_name)
+
+    c.run(f"{MULTIPASS} mount {folder} {machine}:{target_name}")
+
+    config = _load_mp_config(c)
+    mounts = get_mounts(config, machine)
+    mounts[source_name] = target_name
+
+    _store_mp_config(c, config)
+
+
+@task()
+def remount(c: Connection, machine: str = DEFAULT_MACHINE_NAME) -> None:
+    """
+    Remount all edwh managed mounts.
+    """
+    config = _load_mp_config(c)
+    mounts = get_mounts(config, machine)
+
+    for source, target in mounts.items():
+        c.run(f"{MULTIPASS} mount {source} {machine}:{target}", warn=True)
+
+
+@task()
+def unmount(c: Connection, folder: str, machine: str = DEFAULT_MACHINE_NAME) -> None:
+    """
+    Remove an edwh managed mountpoint.
+    """
+    source_name, _ = _resolve_multipass_paths(folder, "")
+
+    config = _load_mp_config(c)
+    mounts = get_mounts(config, machine)
+    if not (mount := mounts.get(source_name)):
+        cprint(f"Could not find mount point for {source_name}", color="yellow")
+        return
+
+    c.run(f"{MULTIPASS} unmount {machine}:{mount}", warn=True)
+    del mounts[source_name]
+    _store_mp_config(c, config)
+
+
+@task(name="mounts")
+def list_mounts(c: Connection, machine: str = DEFAULT_MACHINE_NAME) -> None:
+    """
+    List edwh managed mounts.
+    """
+    config = _load_mp_config(c)
+    mounts = get_mounts(config, machine)
+
+    print(mounts)
