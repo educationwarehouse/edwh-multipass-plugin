@@ -11,6 +11,7 @@ from edwh import AnyDict
 from fabric import Connection
 from edwh.improved_invoke import improved_task as task
 import tomlkit
+from termcolor import cprint
 
 T = typing.TypeVar("T")
 
@@ -19,6 +20,7 @@ MULTIPASS = "/snap/bin/multipass"
 
 # DON'T resolve ~ yet, since it can be executed remotely!
 EW_MP_CONFIG = "~/.config/edwh/multipass.toml"
+DEFAULT_MACHINE_NAME = "dockers"
 
 
 @task(name="install", pre=[edwh.tasks.require_sudo])
@@ -197,10 +199,7 @@ def prepare_multipass(c: Connection, machine_name: str) -> None:
 #    so mp.remount knows which folders to remount
 
 def _resolve_multipass_paths(folder: str, target: str) -> tuple[str, str]:
-    if folder.startswith("/"):
-        source_path = Path(folder)
-    else:
-        source_path = Path.cwd() / folder
+    source_path = Path(folder) if folder.startswith("/") else Path.cwd() / folder
     source_name = str(source_path).rstrip("/")
     target_name = (target or folder).rstrip("/")
 
@@ -223,41 +222,71 @@ def _load_mp_config(c: Connection) -> MultipassConfig:
     )
 
 
+def get_mounts(config: MultipassConfig, machine: str) -> typing.MutableMapping[str, str]:
+    """
+    Extract mounts for a machine in config.
+    """
+    machine_config = config.setdefault(machine, {})
+    return machine_config.setdefault("mounts", {})
+
+
 def _store_mp_config(c: Connection, config: MultipassConfig) -> None:
     config_str = tomlkit.dumps(config)
     fabric_write(c, EW_MP_CONFIG, config_str, parents=True)
 
 
-@task()
-def mount(c: Connection, folder: str, machine: str = "dockers", target_name: str = "") -> None:
+@task(name="mount")
+def do_mount(c: Connection, folder: str, machine: str = DEFAULT_MACHINE_NAME, target_name: str = "") -> None:
+    """
+    Configure a new mountpoint.
+    """
     source_name, target_name = _resolve_multipass_paths(folder, target_name)
 
     c.run(f"{MULTIPASS} mount {folder} {machine}:{target_name}")
 
     config = _load_mp_config(c)
-
-    machine_config = config.setdefault(machine, {})
-    mounts = machine_config.setdefault("mounts", {})
-
+    mounts = get_mounts(config, machine)
     mounts[source_name] = target_name
-
-    print(config)
 
     _store_mp_config(c, config)
 
 
 @task()
-def remount(c: Connection) -> None:
-    ...
+def remount(c: Connection, machine: str = DEFAULT_MACHINE_NAME) -> None:
+    """
+    Remount all edwh managed mounts.
+    """
+    config = _load_mp_config(c)
+    mounts = get_mounts(config, machine)
+
+    for source, target in mounts.items():
+        c.run(f"{MULTIPASS} mount {source} {machine}:{target}", warn=True)
 
 
 @task()
-def unmount(c: Connection, folder: str, machine: str = "dockers") -> None:
+def unmount(c: Connection, folder: str, machine: str = DEFAULT_MACHINE_NAME) -> None:
+    """
+    Remove an edwh managed mountpoint.
+    """
     source_name, _ = _resolve_multipass_paths(folder, "")
 
     config = _load_mp_config(c)
+    mounts = get_mounts(config, machine)
+    if not (mount := mounts.get(source_name)):
+        cprint(f"Could not find mount point for {source_name}", color="yellow")
+        return
 
-    if not (mount := config[machine]["mounts"].get(source_name)):
-        ...
+    c.run(f"{MULTIPASS} unmount {machine}:{mount}", warn=True)
+    del mounts[source_name]
+    _store_mp_config(c, config)
 
-    # mp unmount dockers:zoetermeer
+
+@task(name="mounts")
+def list_mounts(c: Connection, machine: str = DEFAULT_MACHINE_NAME) -> None:
+    """
+    List edwh managed mounts.
+    """
+    config = _load_mp_config(c)
+    mounts = get_mounts(config, machine)
+
+    print(mounts)
