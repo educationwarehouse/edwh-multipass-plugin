@@ -26,6 +26,15 @@ dependencies = [
   "pyyaml",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "hatch",
+    # "python-semantic-release >= 8.0.0a5",
+    "black",
+    "su6[all]",
+    "types-pyyaml"
+]
+
 [project.entry-points."edwh.tasks"]
 mp = "edwh_multipass_plugin.tasks"
 
@@ -159,3 +168,25 @@ build_command = "hatch build"
 
 parser_angular_minor_types = "feat,minor"
 parser_angular_patch_types = "fix,perf,refactor,build,chore,patch"
+
+
+[tool.mypy]
+strict = true
+
+[[tool.mypy.overrides]]
+module = "fabric"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "fabric.main"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "fabric.connection"
+ignore_missing_imports = true
+
+[tool.su6]
+directory = "src"
+include = []
+exclude = []
+stop-after-first-failure = true
