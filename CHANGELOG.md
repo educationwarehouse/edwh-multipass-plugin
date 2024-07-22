@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v1.1.2 (2024-07-22)
+
+### Fix
+
+* Indentation error ([`bfda2d7`](https://github.com/educationwarehouse/edwh-multipass-plugin/commit/bfda2d76fb7adfda377b1919225131419b5f3114))
+
 ## v1.1.1 (2024-07-12)
 
 ### Fix
