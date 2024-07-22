@@ -53,7 +53,7 @@ def uniq(lst: list[T]) -> list[T]:
 
 
 @task(name="fix-host", aliases=["fix-dns"], iterable=["hostname"], pre=[edwh.tasks.require_sudo])
-def fix_hosts_for_multipass_machine(c: Connection, machine_name: str, hostname: typing.Collection[str] = ()) -> None:
+def fix_hosts_for_multipass_machine(c: Connection, machine_name: str, hostname: typing.Optional[list[str]] = None) -> None:
     """
     Update your hosts file to connect fake hostnames to your multipass IP.
 
@@ -86,7 +86,7 @@ def fix_hosts_for_multipass_machine(c: Connection, machine_name: str, hostname: 
 
     first_address = machine["ipv4"][0]
     # start with the given hostnames (it's iterable, so should be a list style or default empty tuple)
-    hostnames = list(hostname)
+    hostnames = list(hostname or [])
     # register the hostname
     hostnames.append(machine_name)
     # only unique values
@@ -112,22 +112,16 @@ def fix_hosts_for_multipass_machine(c: Connection, machine_name: str, hostname: 
                 print(new_hosts[-1])
             else:
                 new_hosts.append(line)
-        overwrite_hosts_command = """
-            python3 -c "import sys \n
-            with open('/etc/hosts','w') as h: h.write(sys.stdin.read().strip())" <<EOFEOFEOF\n
-            """ + "\n".join(
-            new_hosts
-        )
+        overwrite_hosts_command = """python3 -c "import sys \nwith open('/etc/hosts','w') as h: h.write(sys.stdin.read().strip())" <<EOFEOFEOF\n"""
+        overwrite_hosts_command += "\n".join(new_hosts)
         overwrite_hosts_command += "\nEOFEOFEOF"
-        c.sudo("ls >> /dev/null")  # force a sudo to ask for password
         c.sudo(overwrite_hosts_command)
     else:
         print("Appending to hosts file")
-        c.sudo("ls >> /dev/null")  # force a sudo to ask for password
         line_to_append = re.sub(r"  +", " ", f"{first_address}  {' '.join(hostnames)}")
         print(line_to_append)
         # simpelweg overschrijven via een echo of cat >> /etc/hosts mag niet. dus dan maar via een python script.
-        c.sudo(f'''python3 -c "with open('/etc/hosts','a') as h: h.write('{line_to_append}')"''')
+        c.sudo(f'''python3 -c "with open('/etc/hosts','a') as f: f.write('{line_to_append}')"''')
 
 
 @task(name="list")
