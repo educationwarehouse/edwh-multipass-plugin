@@ -5,12 +5,11 @@ import typing
 from pathlib import Path
 
 import edwh
-import yaml
-from edwh import confirm, fabric_read, fabric_write
-from edwh import AnyDict
-from fabric import Connection
-from edwh.improved_invoke import improved_task as task
 import tomlkit
+import yaml
+from edwh import AnyDict, confirm, fabric_read, fabric_write
+from edwh.improved_invoke import improved_task as task
+from fabric import Connection
 from termcolor import cprint
 
 T = typing.TypeVar("T")
@@ -53,7 +52,9 @@ def uniq(lst: list[T]) -> list[T]:
 
 
 @task(name="fix-host", aliases=["fix-dns"], iterable=["hostname"], pre=[edwh.tasks.require_sudo])
-def fix_hosts_for_multipass_machine(c: Connection, machine_name: str, hostname: typing.Optional[list[str]] = None) -> None:
+def fix_hosts_for_multipass_machine(
+    c: Connection, machine_name: str, hostname: typing.Optional[list[str]] = None
+) -> None:
     """
     Update your hosts file to connect fake hostnames to your multipass IP.
 
@@ -132,10 +133,7 @@ def list_machines(c: Connection, quiet: bool = False) -> list[AnyDict]:
 
     output = c.run(f"{MULTIPASS} list --format json", hide=True).stdout
     if quiet:
-        return typing.cast(
-            list[AnyDict],
-            json.loads(output)["list"]
-        )
+        return typing.cast(list[AnyDict], json.loads(output)["list"])
     else:
         print(output)
         return []
@@ -191,6 +189,7 @@ def prepare_multipass(c: Connection, machine_name: str) -> None:
 
 # todo: mp.mount which stores mounts in a file
 #    so mp.remount knows which folders to remount
+
 
 def _resolve_multipass_paths(folder: str, target: str) -> tuple[str, str]:
     source_path = Path(folder) if folder.startswith("/") else Path.cwd() / folder
