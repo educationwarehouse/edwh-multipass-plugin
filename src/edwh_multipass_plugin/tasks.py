@@ -302,8 +302,29 @@ def unmount(c: Connection, folder: str, machine: str = DEFAULT_MACHINE_NAME, per
         return
 
     c.run(f"{MULTIPASS} unmount {machine}:{mount}", warn=True)
-    del mounts[source_name]
-    _store_mp_config(c, config)
+
+    if permanently:
+        del mounts[source_name]
+        _store_mp_config(c, config)
+
+
+@task()
+def unmount_all(c: Connection, machine: str = DEFAULT_MACHINE_NAME, permanently: bool = False) -> None:
+    """
+    Unmount all mounted volumes.
+
+    Don't save to config by default!
+    """
+    config = _load_mp_config(c)
+    mounts = get_mounts(config, machine)
+
+    for mount in mounts:
+        unmount(
+            c,
+            folder=mount,
+            machine=machine,
+            permanently=permanently,
+        )
 
 
 @task(name="mounts")
