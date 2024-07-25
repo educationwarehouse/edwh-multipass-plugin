@@ -3,13 +3,14 @@ import re
 import sys
 import typing
 from pathlib import Path
+from typing import Optional
 
 import edwh
 import tomlkit
 import yaml
 from edwh import AnyDict, confirm, fabric_read, fabric_write
 from edwh.improved_invoke import improved_task as task
-from fabric import Connection
+from fabric import Connection, Result
 from termcolor import cprint
 
 T = typing.TypeVar("T")
@@ -52,9 +53,7 @@ def uniq(lst: list[T]) -> list[T]:
 
 
 @task(name="fix-host", aliases=["fix-dns"], iterable=["hostname"], pre=[edwh.tasks.require_sudo])
-def fix_hosts_for_multipass_machine(
-    c: Connection, machine_name: str, hostname: typing.Optional[list[str]] = None
-) -> None:
+def fix_hosts_for_multipass_machine(c: Connection, machine_name: str, hostname: Optional[list[str]] = None) -> None:
     """
     Update your hosts file to connect fake hostnames to your multipass IP.
 
@@ -228,6 +227,27 @@ def _store_mp_config(c: Connection, config: MultipassConfig) -> None:
     fabric_write(c, EW_MP_CONFIG, config_str, parents=True)
 
 
+def mp_mount(
+    c: Connection,
+    folder: str,
+    machine: str,
+    target_name: str,
+    map_uid: Optional[dict[int, int]] = None,
+    map_gid: Optional[dict[int, int]] = None,
+) -> Optional[Result]:
+    map_uid = {1000: 1000, 1050: 1050} if map_uid is None else map_uid
+    map_gid = {1000: 1000, 1050: 1050} if map_gid is None else map_gid
+
+    mapping_args = (
+        ""
+        + " ".join(f"--uid-map={k}:{v}" for k, v in map_uid.items())
+        + " "
+        + " ".join(f"--gid-map={k}:{v}" for k, v in map_gid.items())
+    )
+
+    return c.run(f"{MULTIPASS} mount {mapping_args} {folder} {machine}:{target_name}", warn=True)
+
+
 @task(name="mount")
 def do_mount(c: Connection, folder: str, machine: str = DEFAULT_MACHINE_NAME, target_name: str = "") -> None:
     """
@@ -235,7 +255,12 @@ def do_mount(c: Connection, folder: str, machine: str = DEFAULT_MACHINE_NAME, ta
     """
     source_name, target_name = _resolve_multipass_paths(folder, target_name)
 
-    c.run(f"{MULTIPASS} mount {folder} {machine}:{target_name}")
+    mp_mount(
+        c,
+        folder,
+        machine,
+        target_name,
+    )
 
     config = _load_mp_config(c)
     mounts = get_mounts(config, machine)
@@ -253,13 +278,20 @@ def remount(c: Connection, machine: str = DEFAULT_MACHINE_NAME) -> None:
     mounts = get_mounts(config, machine)
 
     for source, target in mounts.items():
-        c.run(f"{MULTIPASS} mount {source} {machine}:{target}", warn=True)
+        mp_mount(
+            c,
+            source,
+            machine,
+            target,
+        )
 
 
 @task()
-def unmount(c: Connection, folder: str, machine: str = DEFAULT_MACHINE_NAME) -> None:
+def unmount(c: Connection, folder: str, machine: str = DEFAULT_MACHINE_NAME, permanently: bool = True) -> None:
     """
     Remove an edwh managed mountpoint.
+
+    Saves to config by default!
     """
     source_name, _ = _resolve_multipass_paths(folder, "")
 
