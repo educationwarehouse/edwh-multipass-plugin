@@ -2,6 +2,16 @@
 
 <!--next-version-placeholder-->
 
+## v1.2.0-beta.1 (2024-07-25)
+
+### Feature
+
+* `unmount-all` option to (temporarily) unmount everything ([`f36456d`](https://github.com/educationwarehouse/edwh-multipass-plugin/commit/f36456d064fe349d799cd64432ad98d45742d192))
+
+### Fix
+
+* Apply gid and uid map when mounting by default ([`341af80`](https://github.com/educationwarehouse/edwh-multipass-plugin/commit/341af80aad97f9bde716a9d672a2039ec1d4faad))
+
 ## v1.1.2 (2024-07-22)
 
 ### Fix
