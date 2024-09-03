@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import sys
 import typing
@@ -235,8 +236,10 @@ def mp_mount(
     map_uid: Optional[dict[int, int]] = None,
     map_gid: Optional[dict[int, int]] = None,
 ) -> Optional[Result]:
-    map_uid = {1000: 1000, 1050: 1050} if map_uid is None else map_uid
-    map_gid = {1000: 1000, 1050: 1050} if map_gid is None else map_gid
+
+    # map current user on host to ubuntu in VM
+    map_uid = {os.getuid(): 1000, 1050: 1050} if map_uid is None else map_uid
+    map_gid = {os.getuid(): 1000, 1050: 1050} if map_gid is None else map_gid
 
     mapping_args = (
         ""
