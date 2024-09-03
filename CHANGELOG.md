@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v1.2.1 (2024-09-03)
+
+### Fix
+
+* Use current user ID instead of hard-coding on 1000 ([`8d2f41c`](https://github.com/educationwarehouse/edwh-multipass-plugin/commit/8d2f41cf98a58e623f95661026c29cc982186a42))
+
 ## v1.2.0 (2024-07-25)
 
 
