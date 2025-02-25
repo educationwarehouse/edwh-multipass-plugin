@@ -23,6 +23,13 @@ MULTIPASS = "/snap/bin/multipass"
 EW_MP_CONFIG = "~/.config/edwh/multipass.toml"
 DEFAULT_MACHINE_NAME = "dockers"
 
+@task(name="nonosnap")
+def remove_nosnap(c):
+    if os.path.isfile("/etc/apt/preferences.d/nosnap.pref"):
+        print("Removing nosnap.pref...")
+        c.sudo("rm /etc/apt/preferences.d/nosnap.pref")
+    else:
+        print("no nonsnap.pref found")
 
 @task(name="install", pre=[edwh.tasks.require_sudo])
 def install_multipass(c: Connection) -> None:
@@ -31,6 +38,9 @@ def install_multipass(c: Connection) -> None:
     """
     if not c.run(f"{MULTIPASS} --version", warn=True, hide=True).ok:
         print(" [ ] Multipass not found. installing...")
+        if os.path.isfile("/etc/apt/preferences.d/nosnap.pref"):
+            print("Removing nosnap.pref...")
+            c.sudo("rm /etc/apt/preferences.d/nosnap.pref")
         c.sudo("snap install multipass")
         print(" [x] Multipass installed")
     else:
