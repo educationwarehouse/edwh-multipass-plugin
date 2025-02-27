@@ -14,6 +14,7 @@ from edwh import AnyDict, confirm, fabric_read, fabric_write
 from edwh.improved_invoke import improved_task as task
 from fabric import Connection, Result
 from termcolor import cprint
+import stat
 
 T = typing.TypeVar("T")
 
@@ -24,19 +25,25 @@ MULTIPASS = "/snap/bin/multipass"
 EW_MP_CONFIG = "~/.config/edwh/multipass.toml"
 DEFAULT_MACHINE_NAME = "dockers"
 
+@task(pre=[edwh.tasks.require_sudo])
+def check_file(c, path="", quiet=False):
+    try:
+        c.sudo(path)
+        return True
+    except FileNotFoundError:
+        if not quiet: print(f"File {path} not found")
+        return False
+
 @task(name="getsnap")
 def install_snap(c, quiet=False):
-    if edwh.is_installed(c, "snap"):
-        if not quiet: print("snap is already installed")
-        return
-    if os.path.isfile("/etc/apt/preferences.d/nosnap.pref"):
-        print("Removing nosnap.pref...")
-        c.sudo("rm /etc/apt/preferences.d/nosnap.pref")
-        c.sudo("apt update")
-    elif not quiet:
-        print("no nonsnap.pref found")
+    try:
+        c.run("rm -f /etc/apt/preferences.d/nosnap.pref")
+        if not quiet: print("Nosnap found and removed.")
+        c.run("apt update")
+    except:
+        if not quiet: print("no nonsnap.pref found")
     if not quiet: print("installing snap...")
-    c.sudo("apt install snapd")
+    # c.sudo("apt install snapd")
 
 @task(name="install", pre=[edwh.tasks.require_sudo])
 def install_multipass(c: Connection) -> None:
