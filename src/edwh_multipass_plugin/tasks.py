@@ -9,6 +9,7 @@ from typing import Optional
 import edwh
 import tomlkit
 import yaml
+from certifi import contents
 from edwh import AnyDict, confirm, fabric_read, fabric_write
 from edwh.improved_invoke import improved_task as task
 from fabric import Connection, Result
@@ -25,7 +26,7 @@ DEFAULT_MACHINE_NAME = "dockers"
 
 @task(name="getsnap")
 def install_snap(c, quiet=False):
-    if os.system("which snap > /dev/null 2>&1") == 0:
+    if edwh.is_installed(c, "snap"):
         if not quiet: print("snap is already installed")
         return
     if os.path.isfile("/etc/apt/preferences.d/nosnap.pref"):
