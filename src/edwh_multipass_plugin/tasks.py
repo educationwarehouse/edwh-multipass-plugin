@@ -32,7 +32,7 @@ def install_snap(c, quiet=False):
             print("Snap already installed")
         return
     try:
-        c.run("rm /etc/apt/preferences.d/nosnap.pref")
+        c.sudo("rm /etc/apt/preferences.d/nosnap.pref")
         if not quiet:
             print("Nosnap found and removed.")
     except UnexpectedExit:
