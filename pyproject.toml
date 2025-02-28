@@ -22,7 +22,7 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-  "edwh>=0.43",
+  "edwh>=0.53.7",
   "pyyaml",
 ]
 
