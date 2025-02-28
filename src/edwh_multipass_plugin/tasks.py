@@ -1,9 +1,11 @@
 import json
 import os
 import re
+import stat
 import sys
 import typing
 from pathlib import Path
+from tkinter.constants import RAISED
 from typing import Optional
 
 import edwh
@@ -13,8 +15,8 @@ from certifi import contents
 from edwh import AnyDict, confirm, fabric_read, fabric_write
 from edwh.improved_invoke import improved_task as task
 from fabric import Connection, Result
+from invoke import UnexpectedExit
 from termcolor import cprint
-import stat
 
 T = typing.TypeVar("T")
 
@@ -25,19 +27,25 @@ MULTIPASS = "/snap/bin/multipass"
 EW_MP_CONFIG = "~/.config/edwh/multipass.toml"
 DEFAULT_MACHINE_NAME = "dockers"
 
+
 @task(name="getsnap")
 def install_snap(c, quiet=False):
     if edwh.tasks.is_installed(c, "snap"):
-        if not quiet: print("Snap already installed")
+        if not quiet:
+            print("Snap already installed")
         return
     try:
-        c.run("rm -f /etc/apt/preferences.d/nosnap.pref")
-        if not quiet: print("Nosnap found and removed.")
-        c.run("apt update")
-    except:
-        if not quiet: print("No nonsnap.pref found")
-    if not quiet: print("Installing snap...")
-    c.sudo("apt install snapd")
+        c.run("rm /etc/apt/preferences.d/nosnap.pref")
+        if not quiet:
+            print("Nosnap found and removed.")
+    except UnexpectedExit:
+        if not quiet:
+            print("No nonsnap.pref found")
+    c.sudo("apt update")
+    if not quiet:
+        print("Installing snap...")
+    c.sudo("apt install -y snapd")
+
 
 @task(name="install", pre=[edwh.tasks.require_sudo])
 def install_multipass(c: Connection) -> None:
@@ -126,7 +134,7 @@ def fix_hosts_for_multipass_machine(c: Connection, machine_name: str, hostname: 
                 line = line.replace("\t", "    ")
                 # create a new line with the ipv, whitespace, and the remainder of the original
                 # line (everything after the first space), replacing multiple spaces with one.
-                new_hosts.append(re.sub(r"  +", " ", f'{first_address}      {line.split(" ", 1)[1]}'))
+                new_hosts.append(re.sub(r"  +", " ", f"{first_address}      {line.split(' ', 1)[1]}"))
                 print(new_hosts[-1])
             else:
                 new_hosts.append(line)
@@ -253,7 +261,6 @@ def mp_mount(
     map_uid: Optional[dict[int, int]] = None,
     map_gid: Optional[dict[int, int]] = None,
 ) -> Optional[Result]:
-
     # map current user on host to ubuntu in VM
     map_uid = {os.getuid(): 1000, 1050: 1050} if map_uid is None else map_uid
     map_gid = {os.getuid(): 1000, 1050: 1050} if map_gid is None else map_gid
