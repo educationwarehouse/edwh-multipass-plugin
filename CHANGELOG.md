@@ -2,6 +2,21 @@
 
 <!--next-version-placeholder-->
 
+## v1.3.0 (2025-02-28)
+
+### Feature
+
+* Changed the nosnap command to now install snap when it doesn't detect it, turning it into getsnap. ([`ecca170`](https://github.com/educationwarehouse/edwh-multipass-plugin/commit/ecca170539618476b36e950deda8fa1eda05be17))
+* Added a check for nosnap.pref and removes it if it sees it. ([`6f6799f`](https://github.com/educationwarehouse/edwh-multipass-plugin/commit/6f6799f4d19874a3f3b9baf849df5b893858c923))
+
+### Fix
+
+*  changed run command to sudo command ([`fc3a948`](https://github.com/educationwarehouse/edwh-multipass-plugin/commit/fc3a948b9a2ac3ce79622bbba102e6ca8a3ea10a))
+*  removed tkinter sneaking into the file ([`32a908f`](https://github.com/educationwarehouse/edwh-multipass-plugin/commit/32a908f639b5381e1b8b35c78c71679d2e4792ac))
+*  Put the final touches on the try except. And moved the sudo apt update outside of the try. ([`8209cdc`](https://github.com/educationwarehouse/edwh-multipass-plugin/commit/8209cdc6db336cfc71307ac8bed76fb7569dbea1))
+*  check if snap and nosnap exists and what to do in install_snap, should be fully finished now. ([`3052bf8`](https://github.com/educationwarehouse/edwh-multipass-plugin/commit/3052bf8f5ff635407af5c8faba9d3ebce08f4d86))
+* Updated the edwh tool minimum version requirement and changed os.system to edwh.is_installed ([`b9f087a`](https://github.com/educationwarehouse/edwh-multipass-plugin/commit/b9f087a5858a76da4dc6a6f5baeb7bf3f8a7bada))
+
 ## v1.2.1 (2024-09-03)
 
 ### Fix
