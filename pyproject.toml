@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = 'An `edwh`plugin to work with multipass instances for local development.'
 readme = "README.md"
 requires-python = ">=3.10"
-license = "MIT"
+license-expression = "MIT"
 keywords = ['edwh','multipass','plugin','invoke']
 authors = [
   { name = "Remco", email = "remco@educationwarehouse.nl" },
