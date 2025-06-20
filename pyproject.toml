@@ -35,7 +35,7 @@ dev = [
     "types-pyyaml"
 ]
 
-[project.entry-points."edwh.tasks"]
+[project.entry-points.edwh]
 mp = "edwh_multipass_plugin.tasks"
 
 

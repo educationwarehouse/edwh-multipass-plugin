@@ -8,8 +8,7 @@ from typing import Optional
 import edwh
 import tomlkit
 import yaml
-from edwh import AnyDict, confirm, fabric_read, fabric_write
-from edwh.improved_invoke import improved_task as task
+from edwh import AnyDict, task, confirm, fabric_read, fabric_write
 from fabric import Connection, Result
 from termcolor import cprint
 
