@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v1.3.1 (2025-07-03)
+
+### Fix
+
+* Don't depend on internal `edwh.improved_invoke` anymore ([`99746af`](https://github.com/educationwarehouse/edwh-multipass-plugin/commit/99746af1a6ed1745eae9d3076dfe0aba85ba2227))
+
 ## v1.3.0 (2025-02-28)
 
 ### Feature
