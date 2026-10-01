@@ -1,4 +1,6 @@
 # SPDX-FileCopyrightText: 2023-present Remco <remco@educationwarehouse.nl>
 #
 # SPDX-License-Identifier: MIT
-__version__ = "1.3.1"
+from importlib.metadata import version
+
+__version__ = version("edwh-multipass-plugin")
